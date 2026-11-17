@@ -1,36 +1,42 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# front-onco-dash
 
-## Getting Started
+Front do OncoDash (Next.js 16 + Tailwind 4), no padrão visual do SIMDASH e do UMAE.
 
-First, run the development server:
+## Rodar localmente
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp .env.example .env.local     # API_URL=http://localhost:3001
+npm install
+npm run dev                    # http://localhost:3000 (a API precisa estar rodando)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+O front chama a API sempre por `/api/*`, que o Next repassa para `API_URL`. Assim o cookie de sessão (`httpOnly`) fica no próprio endereço do painel e o JavaScript nunca vê o token.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Telas
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Caminho | Quem vê |
+| --- | --- |
+| `/login` | público (exige localização e o termo de coleta de IP/localização) |
+| `/esqueci-senha`, `/redefinir-senha/[token]` | público |
+| `/convite/[token]` | quem recebeu o convite |
+| `/` | logado: perfil, recorte e se pode convidar (os painéis de dados entram aqui) |
+| `/admin/usuarios` | perfis que convidam (Unidade não) |
+| `/admin/auditoria` | Desenvolvedor e Gestor federal |
 
-## Learn More
+`src/proxy.ts` só redireciona para `/login` quando falta o cookie; quem valida a sessão é a API em toda chamada.
 
-To learn more about Next.js, take a look at the following resources:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Painel
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+O painel é o do protótipo v2 (HTML + D3), em `public/painel/`, servido na raiz (`/` → `/painel/index.html`, ver
+`next.config.ts`). Os gráficos, filtros, listas e exportações são os mesmos do protótipo; o que mudou:
 
-## Deploy on Vercel
+- `js/00-runtime.js`: as fontes de dados começam "carregando" e são preenchidas pela API (`dash.setSource`).
+- `oncodash.js`: confere a sessão (sem sessão → `/login`), mostra o usuário com o menu (Usuários, Auditoria,
+  Atualização, Sair), carrega `GET /api/painel/solicitacoes` (já no recorte do usuário) e o mapa das UFs, fixa
+  perfil/escopo pelo login e registra as exportações na auditoria.
+- Pequenos ajustes nos módulos (`js/01..11`): perfil Gestor municipal, nome do estabelecimento no rótulo do CNES e
+  distância/rotas que ignoram linhas sem coordenadas.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Campos que o banco do APAC Onco ainda não tem (macrorregião, região de saúde e município do serviço, tipo
+CACON/UNACON, região de saúde de residência, coordenadas e distância) aparecem como "Não informado".

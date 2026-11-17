@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Painel do protótipo (JS puro + D3 minificado), servido como arquivo estático.
+    "public/painel/**",
   ]),
 ]);
 

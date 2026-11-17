@@ -1,26 +1,65 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ── Tokens do padrão SIMDASH / UMAE ───────────────────────────────────────
+   Mesmos valores do front-dashboard-simrad (app/globals.css) e do protótipo
+   v2: navy no cabeçalho, verde nas ações e no rodapé. */
+@theme {
+  --color-navy: #1b2a3b;
+  --color-navy-light: #253547;
+  --color-brand-green: #1a7a4a;
+  --color-brand-green-light: #22a05f;
+  --color-brand-green-dark: #15803d;
+  --color-accent: #2ecc8e;
+  --color-muted: #8a9bb0;
+  --color-app-bg: #f0f2f5;
+
+  --radius-app-sm: 8px;
+  --radius-app-md: 12px;
+  --radius-app-lg: 16px;
+  --radius-app-pill: 50px;
+
+  --shadow-app-nav: 0 8px 32px rgba(0, 0, 0, 0.28);
+  --shadow-app-card: 0 2px 16px rgba(0, 0, 0, 0.07);
+
+  --font-sans: "Segoe UI", system-ui, Roboto, Arial, Helvetica, sans-serif;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-app-bg);
+  color: #171717;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@keyframes app-shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
+}
+.animate-app-shake { animation: app-shake 0.35s ease; }
+
+@keyframes app-fade-in-up {
+  from { opacity: 0; transform: translateY(-12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-app-fade-in-up { animation: app-fade-in-up 0.22s ease-out; }
+
+@keyframes app-shimmer {
+  0% { background-position: 150% 0; }
+  100% { background-position: -50% 0; }
+}
+.animate-app-shimmer {
+  background-image: linear-gradient(100deg, #e7ebf0 20%, #f6f8fa 40%, #e7ebf0 60%);
+  background-size: 250% 100%;
+  animation: app-shimmer 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-app-shimmer, .animate-app-fade-in-up, .animate-app-shake { animation: none; }
 }

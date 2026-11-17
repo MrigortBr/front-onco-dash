@@ -1,0 +1,17 @@
+/* OncoDash: usuário real no cabeçalho, com menu (administração e saída). */
+.od-user-wrap{position:relative}
+.od-user-btn{display:flex;align-items:center;gap:10px;background:transparent;border:0;color:#fff;cursor:pointer;padding:4px 6px;border-radius:var(--r-pill)}
+.od-user-btn:hover,.od-user-btn[aria-expanded="true"]{background:var(--navy-l)}
+.od-user-btn:focus-visible{outline:2px solid var(--accent,#7dd3a8);outline-offset:2px}
+.od-menu{position:absolute;right:0;top:calc(100% + 8px);min-width:200px;background:#fff;border-radius:14px;box-shadow:0 12px 32px rgba(15,27,45,.22);padding:6px;z-index:1100}
+.od-menu[hidden]{display:none}
+.od-links{display:flex;flex-direction:column}
+.od-links a,.od-sair{display:block;width:100%;text-align:left;font:inherit;font-size:13px;font-weight:600;color:#1f2937;text-decoration:none;padding:9px 12px;border-radius:10px;background:transparent;border:0;cursor:pointer}
+.od-links a:hover,.od-sair:hover{background:#f1f5f9}
+.od-links:not(:empty)+.od-sair{border-top:1px solid #e2e8f0;border-radius:0 0 10px 10px;margin-top:4px}
+.od-sair{color:#b91c1c}
+.od-acesso{font-size:13px;font-weight:700;color:var(--ink,#1f2937);line-height:1.3}
+.od-acesso span{display:block;font-weight:500;color:#64748b;font-size:12px}
+.od-fonte.od-ok{background:#ecfdf3;color:#166534;border-color:#bbe5c8}
+.od-fonte.od-erro{background:#fef2f2;color:#b91c1c;border-color:#fecaca}
+@media (max-width:900px){.ao-user{display:flex}.ao-user .ao-user-txt{display:none}}
