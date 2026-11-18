@@ -4,7 +4,16 @@
   const K = (name, fn) => dash.draw(name, (el) => { const rows = A.rows(); if (!rows) return A.dash(el); const v = fn(A.pac(rows)); el.textContent = v === null || v === undefined ? '—' : v; });
   K('k_r_pac', (p) => A.n(p.length));
   K('k_r_mun', (p) => A.n(A.uniq(p, 'mun_residencia')));
-  K('k_r_rs', (p) => (p.length ? A.p(p.filter((x) => x.regiao_saude !== x.regiao_saude_residencia).length / p.length) : null));
+  // OncoDash: fora da UF conta sempre como fora da região. Sem a região de saúde de um dos lados, o
+  // paciente entra no total mas não como "fora" — o número vira um mínimo, e o subtítulo avisa.
+  dash.draw('k_r_rs', (el) => {
+    const rows = A.rows(); if (!rows) return A.dash(el);
+    const p = A.pac(rows); const f = p.map(A.foraRS);
+    const sub = el.closest('.ao-kpi')?.querySelector('.ao-kpi-s');
+    el.textContent = p.length ? A.p(f.filter((v) => v === true).length / p.length) : '—';
+    const sem = f.filter((v) => v === null).length;
+    if (sub) sub.textContent = sem && p.length ? 'no mínimo · sem região de saúde para ' + A.p(sem / p.length) : 'dos pacientes atendidos';
+  });
   K('k_r_uf', (p) => (p.length ? A.p(p.filter((x) => x.uf !== x.uf_residencia).length / p.length) : null));
   const kms = (p) => p.map((x) => x.distancia_km).filter((x) => x !== null);
   K('k_r_dist', (p) => { const v = kms(p); return v.length ? A.n(Math.round(d3.mean(v))) : null; });
@@ -16,14 +25,14 @@
     const items = A.DIST.map(([lim, lab, c]) => { const rows = p.filter((x) => x.distancia_km > prev && x.distancia_km <= lim); prev = lim; return { label: lab, rows, vals: { n: rows.length }, total: rows.length, color: c }; });
     A.vbar(el, items, { segs: [{ key: 'n', label: 'Pacientes', color: A.C.pri }], aria: 'Pacientes por faixa de distância', top: (d) => A.n(d.total) + (p.length ? ' (' + A.p(d.total / p.length) + ')' : ''), onClick: (d) => A.openDetail('territorio', 'Pacientes — distância: ' + d.label, d.rows) });
   });
-  const rotas = (rows) => d3.groups(A.pac(rows), (x) => x.mun_residencia + '|' + x.uf_residencia + '→' + x.mun_servico + '|' + x.uf).map(([k, v]) => ({ o: v[0].mun_residencia, ouf: v[0].uf_residencia, d: v[0].mun_servico, duf: v[0].uf, n: v.length, km: v[0].distancia_km, foraRS: v[0].regiao_saude !== v[0].regiao_saude_residencia, lr: v[0].lat_res, lo: v[0].lon_res, ls: v[0].lat_srv, ln: v[0].lon_srv }))
+  const rotas = (rows) => d3.groups(A.pac(rows), (x) => x.mun_residencia + '|' + x.uf_residencia + '→' + x.mun_servico + '|' + x.uf).map(([k, v]) => ({ o: v[0].mun_residencia, ouf: v[0].uf_residencia, d: v[0].mun_servico, duf: v[0].uf, n: v.length, km: v[0].distancia_km, foraRS: A.foraRS(v[0]), lr: v[0].lat_res, lo: v[0].lon_res, ls: v[0].lat_srv, ln: v[0].lon_srv }))
     // OncoDash: sem coordenadas (ainda não há tabela de território) não dá para desenhar a rota.
     .filter((x) => x.lr !== null && x.ls !== null);
   dash.draw('t_rotas', (tb) => {
     const r = A.rows(); tb.replaceChildren(); if (!r) return;
     rotas(r).filter((x) => x.o !== x.d || x.ouf !== x.duf).sort((a, b) => b.n - a.n || b.km - a.km).slice(0, 15).forEach((x) => {
       const tr = document.createElement('tr');
-      [[x.o + ' (' + x.ouf + ')'], [x.d + ' (' + x.duf + ')'], [A.n(x.n), 1], [A.n(x.km), 1], [x.foraRS ? 'Sim' : 'Não']].forEach(([t, num]) => { const td = document.createElement('td'); td.textContent = t; if (num) td.className = 'ao-num'; tr.appendChild(td); });
+      [[x.o + ' (' + x.ouf + ')'], [x.d + ' (' + x.duf + ')'], [A.n(x.n), 1], [A.n(x.km), 1], [x.foraRS === null ? '—' : x.foraRS ? 'Sim' : 'Não']].forEach(([t, num]) => { const td = document.createElement('td'); td.textContent = t; if (num) td.className = 'ao-num'; tr.appendChild(td); });
       tb.appendChild(tr);
     });
   });
@@ -55,7 +64,7 @@
     g.append('g').selectAll('path').data(lines).join('path')
       .attr('d', (x) => { const [x1, y1] = proj([x.lo, x.lr]); const [x2, y2] = proj([x.ln, x.ls]); const mx = (x1 + x2) / 2, my = (y1 + y2) / 2; const dx = x2 - x1, dy = y2 - y1; const k = 0.2; return `M${x1},${y1} Q${mx - dy * k},${my + dx * k} ${x2},${y2}`; })
       .attr('fill', 'none').attr('stroke', (x) => band(x.km)[2]).attr('stroke-width', (x) => wS(x.n)).attr('stroke-linecap', 'round').attr('opacity', 0.72)
-      .on('pointermove', (ev, x) => tip.show(ev, [x.o + ' (' + x.ouf + ') → ' + x.d + ' (' + x.duf + ')', A.n(x.n) + (x.n === 1 ? ' paciente' : ' pacientes') + ' · ' + A.n(x.km) + ' km em linha reta', x.foraRS ? 'Atendidos fora da região de saúde de residência' : 'Dentro da região de saúde de residência']))
+      .on('pointermove', (ev, x) => tip.show(ev, [x.o + ' (' + x.ouf + ') → ' + x.d + ' (' + x.duf + ')', A.n(x.n) + (x.n === 1 ? ' paciente' : ' pacientes') + ' · ' + A.n(x.km) + ' km em linha reta', x.foraRS === null ? 'Região de saúde não informada' : x.foraRS ? 'Atendidos fora da região de saúde de residência' : 'Dentro da região de saúde de residência']))
       .on('pointerleave', () => tip.hide());
     const res = d3.groups(rs, (x) => x.o + '|' + x.ouf).map(([, v]) => ({ name: v[0].o, uf: v[0].ouf, lat: v[0].lr, lon: v[0].lo, n: d3.sum(v, (y) => y.n), km: d3.max(v, (y) => y.km) }));
     g.append('g').selectAll('circle').data(res).join('circle').attr('cx', (x) => proj([x.lon, x.lat])[0]).attr('cy', (x) => proj([x.lon, x.lat])[1]).attr('r', 2.8).attr('fill', '#FFFFFF').attr('stroke', (x) => band(x.km)[2]).attr('stroke-width', 1.5)
@@ -66,6 +75,6 @@
       .on('pointermove', (ev, x) => tip.show(ev, [x.name + ' (' + x.uf + ')', A.n(x.n) + ' pacientes atendidos', A.n(x.loc) + ' moram no próprio município'])).on('pointerleave', () => tip.hide());
     g.append('g').selectAll('text').data(srv.slice(0, W < 520 ? 5 : 10)).join('text').attr('x', (x) => proj([x.lon, x.lat])[0] + rS(x.n) + 3).attr('y', (x) => proj([x.lon, x.lat])[1] + 4)
       .attr('font-size', 11.5).attr('font-weight', 600).attr('fill', A.C.ink).attr('stroke', '#FFFFFF').attr('stroke-width', 3).attr('paint-order', 'stroke').attr('pointer-events', 'none').text((x) => x.name);
-    el._aoCsv = rs.sort((a, b) => b.n - a.n).map((x) => ({ residencia: x.o, uf_residencia: x.ouf, servico: x.d, uf_servico: x.duf, pacientes: x.n, km_linha_reta: x.km, fora_da_regiao_de_saude: x.foraRS ? 'Sim' : 'Não' }));
+    el._aoCsv = rs.sort((a, b) => b.n - a.n).map((x) => ({ residencia: x.o, uf_residencia: x.ouf, servico: x.d, uf_servico: x.duf, pacientes: x.n, km_linha_reta: x.km, fora_da_regiao_de_saude: x.foraRS === null ? 'Sem informação' : x.foraRS ? 'Sim' : 'Não' }));
   });
 })();

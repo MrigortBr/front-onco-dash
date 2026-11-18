@@ -6,6 +6,15 @@
   const ANTI_HER2 = /trastuzum|pertuzum|lapatin|tucatin|neratin|t-?dm1/;
   // OncoDash: duração em dias → "35 min", "2,1 h" ou "3,2 dias".
   A.duracao = (d) => (d === null || d === undefined ? '—' : d < 1 / 24 ? A.n(Math.max(1, Math.round(d * 1440))) + ' min' : d < 1 ? A.f1(d * 24) + ' h' : A.f1(d) + ' dias');
+  // OncoDash: atendido fora da região de saúde de residência. Outra UF é sempre fora da região
+  // (região de saúde não cruza UF); na mesma UF compara as regiões; sem a região de um dos
+  // lados, não dá para saber (null) e o paciente fica fora da conta.
+  const info = (v) => (v && v !== 'Não informado' ? v : null);
+  A.foraRS = (x) => {
+    if (info(x.uf) && info(x.uf_residencia) && x.uf !== x.uf_residencia) return true;
+    if (info(x.regiao_saude) && info(x.regiao_saude_residencia)) return x.regiao_saude !== x.regiao_saude_residencia;
+    return null;
+  };
   A.antiHer2 = (x) => ANTI_HER2.test(A.norm(x.medicamento || ''));
   A.KPI = {
     env: (r) => A.env(r),
@@ -18,7 +27,7 @@
     rasc_t: (r) => r.filter((x) => x.situacao === 'Rascunho').sort((a, b) => a.data_solicitacao.localeCompare(b.data_solicitacao)),
     dist: (r) => A.env(r).sort((a, b) => b.distancia_km - a.distancia_km),
     r_pac: (r) => A.pac(r),
-    r_rs: (r) => A.pac(r).filter((x) => x.regiao_saude !== x.regiao_saude_residencia),
+    r_rs: (r) => A.pac(r).filter((x) => A.foraRS(x) === true),
     r_uf: (r) => A.pac(r).filter((x) => x.uf !== x.uf_residencia),
     r_dist: (r) => A.pac(r).sort((a, b) => b.distancia_km - a.distancia_km),
     i_merito: (r) => r.filter((x) => x.situacao === 'Indeferida'),
