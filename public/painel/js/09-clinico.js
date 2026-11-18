@@ -12,12 +12,12 @@
   const grp = (r, col, order, labelFn) => {
     let g = d3.groups(A.env(r), (x) => x[col]).filter(([k]) => k);
     if (order) g.sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0])); else g.sort((a, b) => b[1].length - a[1].length);
-    return g.map(([k, v]) => { const s = A.split(v); return { label: labelFn ? labelFn(k) : k, key: k, vals: { aut: s.aut, ind: s.ind, and: s.and, can: s.can }, total: s.total, note: s.taxa === null ? '' : A.p(s.taxa) + ' aut.' }; });
+    return g.map(([k, v]) => { const s = A.split(v); return { label: labelFn ? labelFn(k) : k, key: k, rows: v, vals: { aut: s.aut, ind: s.ind, and: s.and, can: s.can }, total: s.total, note: s.taxa === null ? '' : A.p(s.taxa) + ' aut.' }; });
   };
   const click = (key) => (d) => { const P = A.P(); A.setFilter(key, P[key] === d.key ? '' : d.key); };
   dash.draw('c_estadio', (el) => { const r = A.rows(['est']); if (!r) return A.fail(el); A.hbar(el, grp(r, 'estadio_clinico', A.ORDER.est), { segs: A.SEG, aria: 'Solicitações por estádio clínico', onClick: click('est') }); });
-  dash.draw('c_linha', (el) => { const r = A.rows(['linha']); if (!r) return A.fail(el); A.hbar(el, grp(r, 'linha_tratamento'), { segs: A.SEG, aria: 'Solicitações por linha de tratamento', onClick: click('linha') }); });
-  dash.draw('c_cid', (el) => { const r = A.rows(['cid']); if (!r) return A.fail(el); A.hbar(el, grp(r, 'cid', null, (k) => A.label('cid', k)), { segs: A.SEG, aria: 'Solicitações por CID-10', onClick: click('cid') }); });
+  dash.draw('c_linha', (el) => { const r = A.rows(['linha']); if (!r) return A.fail(el); A.hbar(el, grp(r, 'linha_tratamento'), { segs: A.SEG, aria: 'Solicitações por linha de tratamento', onClick: (d) => A.openDetail('clinico', 'Linha de tratamento: ' + d.label, d.rows) }); });
+  dash.draw('c_cid', (el) => { const r = A.rows(['cid']); if (!r) return A.fail(el); A.hbar(el, grp(r, 'cid', null, (k) => A.label('cid', k, r.find((x) => x.cid === k))), { segs: A.SEG, aria: 'Solicitações por CID-10', onClick: click('cid') }); });
   dash.draw('c_apac', (el) => { const r = A.rows(['apac']); if (!r) return A.fail(el); A.hbar(el, grp(r, 'codigo_apac'), { segs: A.SEG, aria: 'Solicitações por código APAC', onClick: click('apac') }); });
   dash.draw('c_diag', (el) => {
     const r = A.rows(['tdiag']); if (!r) return A.fail(el);
@@ -27,7 +27,7 @@
   });
   dash.draw('c_her2', (el) => {
     const r = A.rows(['her2']); if (!r) return A.fail(el);
-    const e = A.env(r).filter((x) => /Trastuzumabe|Pertuzumabe/.test(x.medicamento));
+    const e = A.env(r).filter(A.antiHer2);
     const cols = { '3+': A.C.pri, '2+ (FISH positivo)': A.C.pril, '2+ (sem FISH)': A.C.bad };
     const items = Object.keys(cols).map((h) => { const n = e.filter((x) => x.her2 === h).length; return { label: h, vals: { n }, total: n, color: cols[h] }; });
     A.vbar(el, items, { segs: [{ key: 'n', label: 'Solicitações', color: A.C.pri }], aria: 'HER2 nos medicamentos anti-HER2', top: (d) => A.n(d.total) + (e.length ? ' (' + A.p(d.total / e.length) + ')' : '') });

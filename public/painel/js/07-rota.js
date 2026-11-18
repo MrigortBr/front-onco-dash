@@ -55,7 +55,7 @@
     g.append('g').selectAll('path').data(lines).join('path')
       .attr('d', (x) => { const [x1, y1] = proj([x.lo, x.lr]); const [x2, y2] = proj([x.ln, x.ls]); const mx = (x1 + x2) / 2, my = (y1 + y2) / 2; const dx = x2 - x1, dy = y2 - y1; const k = 0.2; return `M${x1},${y1} Q${mx - dy * k},${my + dx * k} ${x2},${y2}`; })
       .attr('fill', 'none').attr('stroke', (x) => band(x.km)[2]).attr('stroke-width', (x) => wS(x.n)).attr('stroke-linecap', 'round').attr('opacity', 0.72)
-      .on('pointermove', (ev, x) => tip.show(ev, [x.o + ' (' + x.ouf + ') → ' + x.d + ' (' + x.duf + ')', A.n(x.n) + (x.n === 1 ? ' paciente' : ' pacientes') + ' · ' + A.n(x.km) + ' km por estrada', x.foraRS ? 'Atendidos fora da região de saúde de residência' : 'Dentro da região de saúde de residência']))
+      .on('pointermove', (ev, x) => tip.show(ev, [x.o + ' (' + x.ouf + ') → ' + x.d + ' (' + x.duf + ')', A.n(x.n) + (x.n === 1 ? ' paciente' : ' pacientes') + ' · ' + A.n(x.km) + ' km em linha reta', x.foraRS ? 'Atendidos fora da região de saúde de residência' : 'Dentro da região de saúde de residência']))
       .on('pointerleave', () => tip.hide());
     const res = d3.groups(rs, (x) => x.o + '|' + x.ouf).map(([, v]) => ({ name: v[0].o, uf: v[0].ouf, lat: v[0].lr, lon: v[0].lo, n: d3.sum(v, (y) => y.n), km: d3.max(v, (y) => y.km) }));
     g.append('g').selectAll('circle').data(res).join('circle').attr('cx', (x) => proj([x.lon, x.lat])[0]).attr('cy', (x) => proj([x.lon, x.lat])[1]).attr('r', 2.8).attr('fill', '#FFFFFF').attr('stroke', (x) => band(x.km)[2]).attr('stroke-width', 1.5)
@@ -66,6 +66,6 @@
       .on('pointermove', (ev, x) => tip.show(ev, [x.name + ' (' + x.uf + ')', A.n(x.n) + ' pacientes atendidos', A.n(x.loc) + ' moram no próprio município'])).on('pointerleave', () => tip.hide());
     g.append('g').selectAll('text').data(srv.slice(0, W < 520 ? 5 : 10)).join('text').attr('x', (x) => proj([x.lon, x.lat])[0] + rS(x.n) + 3).attr('y', (x) => proj([x.lon, x.lat])[1] + 4)
       .attr('font-size', 11.5).attr('font-weight', 600).attr('fill', A.C.ink).attr('stroke', '#FFFFFF').attr('stroke-width', 3).attr('paint-order', 'stroke').attr('pointer-events', 'none').text((x) => x.name);
-    el._aoCsv = rs.sort((a, b) => b.n - a.n).map((x) => ({ residencia: x.o, uf_residencia: x.ouf, servico: x.d, uf_servico: x.duf, pacientes: x.n, km_estrada: x.km, fora_da_regiao_de_saude: x.foraRS ? 'Sim' : 'Não' }));
+    el._aoCsv = rs.sort((a, b) => b.n - a.n).map((x) => ({ residencia: x.o, uf_residencia: x.ouf, servico: x.d, uf_servico: x.duf, pacientes: x.n, km_linha_reta: x.km, fora_da_regiao_de_saude: x.foraRS ? 'Sim' : 'Não' }));
   });
 })();

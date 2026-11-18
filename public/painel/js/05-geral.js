@@ -15,8 +15,16 @@
   K('k_dev_rate', (r) => { const e = A.env(r); return e.length ? A.p(e.filter((x) => x.n_devolucoes > 0).length / e.length) : null; });
   K('k_dev_s', (r) => A.n(r.filter((x) => x.situacao === 'Devolvida').length));
   K('k_fila', (r) => A.n(r.filter((x) => x.situacao === 'Enviada' || x.situacao === 'Em análise').length));
-  K('k_tempo', (r) => { const v = r.map((x) => x.dias_ate_parecer).filter((v) => v !== null).sort(d3.ascending); return v.length ? A.f1(d3.median(v)) : null; });
-  K('k_tempo_s', (r) => { const v = r.map((x) => x.dias_ate_parecer).filter((v) => v !== null).sort(d3.ascending); return v.length ? A.f1(d3.quantileSorted(v, 0.9)) + ' dias' : null; });
+  // OncoDash: boa parte dos pareceres sai no mesmo dia do envio; abaixo de 1 dia a mediana aparece em horas ou minutos (antes ficava "0,0 dias").
+  const tempo = (dias) => (dias < 1 / 24 ? [A.n(Math.max(1, Math.round(dias * 1440))), 'min'] : dias < 1 ? [A.f1(dias * 24), 'horas'] : [A.f1(dias), 'dias']);
+  const parecer = (r) => r.map((x) => x.dias_ate_parecer).filter((v) => v !== null).sort(d3.ascending);
+  dash.draw('k_tempo', (el) => {
+    const rows = A.rows(); if (!rows) return A.dash(el);
+    const v = parecer(rows); const unid = el.nextElementSibling;
+    if (!v.length) { el.textContent = '—'; if (unid) unid.textContent = 'dias'; return; }
+    const [n, u] = tempo(d3.median(v)); el.textContent = n; if (unid) unid.textContent = u;
+  });
+  K('k_tempo_s', (r) => { const v = parecer(r); return v.length ? tempo(d3.quantileSorted(v, 0.9)).join(' ') : null; });
   K('k_rasc', (r) => A.n(r.filter((x) => x.situacao === 'Rascunho').length));
   K('k_rasc_s', (r) => A.n(diasAberto(r).filter((d) => d > RASC_LIM).length));
   K('k_rasc_t', (r) => { const d = diasAberto(r); return d.length ? A.f1(d3.mean(d)) : null; });
@@ -35,9 +43,9 @@
   });
   dash.draw('c_tempo', (el) => {
     const r = A.rows(); if (!r) return A.fail(el);
-    const bins = [[0, 1, 'até 1'], [1, 2, '1 a 2'], [2, 3, '2 a 3'], [3, 5, '3 a 5'], [5, 7, '5 a 7'], [7, 10, '7 a 10'], [10, Infinity, '10 ou +']];
+    const bins = [[0, 1 / 24, '< 1 hora'], [1 / 24, 1, '1 h a 1 dia'], [1, 2, '1 a 2 dias'], [2, 3, '2 a 3 dias'], [3, 5, '3 a 5 dias'], [5, 7, '5 a 7 dias'], [7, 10, '7 a 10 dias'], [10, Infinity, '10 dias +']];
     const items = bins.map(([a, b, l]) => { const rows = r.filter((x) => x.dias_ate_parecer !== null && x.dias_ate_parecer >= a && x.dias_ate_parecer < b); return { label: l, rows, vals: { n: rows.length }, total: rows.length, color: a >= A.SLA ? A.C.adm : A.C.teal }; });
-    A.vbar(el, items, { segs: [{ key: 'n', label: 'Decididas', color: A.C.teal }], aria: 'Distribuição do tempo até o parecer em dias', refAfter: '3 a 5', refText: 'referência: ' + A.SLA + ' dias', onClick: (d) => A.openDetail('geral', 'Tempo até o parecer: ' + d.label + ' dias', d.rows) });
+    A.vbar(el, items, { segs: [{ key: 'n', label: 'Decididas', color: A.C.teal }], aria: 'Distribuição do tempo até o parecer em dias', refAfter: '3 a 5 dias', refText: 'referência: ' + A.SLA + ' dias', onClick: (d) => A.openDetail('geral', 'Tempo até o parecer: ' + d.label, d.rows) });
   });
   dash.draw('c_serie', (el) => {
     const r = A.rows(); if (!r) return A.fail(el);

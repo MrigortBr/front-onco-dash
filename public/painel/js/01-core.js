@@ -63,7 +63,7 @@ window.AO = window.AO || {};
     if (key === 'cnes') return r ? `${v} · ${r.no_estabelecimento || r.mun_servico} (${r.uf})` : 'CNES ' + v;
     if ((key === 'macro' || key === 'rs') && r) return `${v} (${r.uf})`;
     if (key === 'sexo') return A.sexo(v);
-    if (key === 'cid') return A.CID[v] ? `${v} · ${A.CID[v]}` : v;
+    if (key === 'cid') { const nome = A.CID[v] || (r && r.cid_nome); return nome ? `${v} · ${nome}` : v; }
     return v;
   };
   A.save = async (filename, data) => {

@@ -23,6 +23,13 @@
     const p = A.pac(r);
     const items = [['F', '#7c3aed'], ['M', '#c4b5fd']].map(([s, c]) => { const n = p.filter((x) => x.sexo === s).length; return { label: A.sexo(s), vals: { n }, total: n, color: c }; });
     A.vbar(el, items, { segs: [{ key: 'n', label: 'Pacientes', color: A.C.pri }], aria: 'Pacientes por sexo', top: (d) => A.n(d.total) + (p.length ? ' (' + A.p(d.total / p.length) + ')' : '') });
+    // OncoDash: total de pacientes (inclui quem está sem sexo informado, se houver).
+    const semSexo = p.length - items.reduce((s, d) => s + d.total, 0);
+    const tot = document.createElement('p'); tot.className = 'od-total';
+    tot.append('Total: ');
+    const b = document.createElement('b'); b.textContent = A.n(p.length) + (p.length === 1 ? ' paciente' : ' pacientes'); tot.append(b);
+    if (semSexo > 0) tot.append(' · ' + A.n(semSexo) + ' sem sexo informado');
+    el.appendChild(tot);
   });
   dash.draw('t_unid', (tb) => {
     const r = A.rows(); tb.replaceChildren(); if (!r) return;

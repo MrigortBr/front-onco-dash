@@ -2,6 +2,11 @@
 (function () {
   const A = window.AO;
   const days = (a, b) => Math.round((A.dt(b) - A.dt(a)) / 864e5);
+  // OncoDash: medicamento anti-HER2, sem depender de maiúsculas/acentos/apresentação.
+  const ANTI_HER2 = /trastuzum|pertuzum|lapatin|tucatin|neratin|t-?dm1/;
+  // OncoDash: duração em dias → "35 min", "2,1 h" ou "3,2 dias".
+  A.duracao = (d) => (d === null || d === undefined ? '—' : d < 1 / 24 ? A.n(Math.max(1, Math.round(d * 1440))) + ' min' : d < 1 ? A.f1(d * 24) + ' h' : A.f1(d) + ' dias');
+  A.antiHer2 = (x) => ANTI_HER2.test(A.norm(x.medicamento || ''));
   A.KPI = {
     env: (r) => A.env(r),
     aut: (r) => r.filter((x) => x.situacao === 'Autorizada'),
@@ -23,15 +28,19 @@
     c_diag: (r) => A.env(r).filter((x) => x.dias_diag !== null).sort((a, b) => b.dias_diag - a.dias_diag),
     c_diag60: (r) => A.env(r).filter((x) => x.dias_diag > 60).sort((a, b) => b.dias_diag - a.dias_diag),
     c_cbo: (r) => A.env(r).filter((x) => !/^2251(21|85)/.test(x.cbo_prescritor || '')),
-    c_her2: (r) => A.env(r).filter((x) => x.her2 === '2+ (sem FISH)'),
+    // OncoDash: só medicamentos anti-HER2 (nome em qualquer grafia: "TRASTUZUMABE 150 MG...", "Pertuzumabe"...).
+    c_her2: (r) => A.env(r).filter((x) => x.her2 === '2+ (sem FISH)' && A.antiHer2(x)),
     c_recid: (r) => A.env(r).filter((x) => x.recidiva === 'Sim')
   };
   A.openDetail = (section, title, rows) => document.dispatchEvent(new CustomEvent('ao:detail', { detail: { section, title, rows } }));
   const pill = (s) => { const c = s === 'Autorizada' ? 'ok' : s === 'Indeferida' ? 'bad' : s === 'Indeferida (prazo)' ? 'adm' : s === 'Devolvida' ? 'warn' : s === 'Em análise' || s === 'Enviada' ? 'pri' : ''; const e = document.createElement('span'); e.className = 'ao-pill ' + c; e.textContent = s; return e; };
   const COLS = [
     ['Solicitação', (x) => x.id], ['Paciente', (x) => x.paciente, 'local'], ['Data', (x) => A.dmyS(x.data_solicitacao)], ['Situação', (x) => x.situacao, null, pill],
-    ['Medicamento', (x) => x.medicamento], ['CID-10', (x) => x.cid], ['Estádio', (x) => x.estadio_clinico], ['Serviço', (x) => `${x.cnes} · ${x.mun_servico} (${x.uf})`],
-    ['Residência', (x) => `${x.mun_residencia} (${x.uf_residencia})`], ['Km', (x) => A.n(x.distancia_km), null, null, 1], ['Dias até parecer', (x) => (x.dias_ate_parecer === null ? '—' : A.f1(x.dias_ate_parecer)), null, null, 1],
+    ['Medicamento', (x) => x.medicamento],
+    // OncoDash: o CBO aparece na lista do cartão "Prescritor fora de oncologia/hematologia" (6º item = cartões onde aparece).
+    ['CBO do prescritor', (x) => x.cbo_prescritor || '—', null, null, 0, ['c_cbo']],
+    ['CID-10', (x) => x.cid], ['Estádio', (x) => x.estadio_clinico], ['Serviço', (x) => `${x.cnes} · ${x.mun_servico} (${x.uf})`],
+    ['Residência', (x) => `${x.mun_residencia} (${x.uf_residencia})`], ['Km', (x) => A.n(x.distancia_km), null, null, 1], ['Tempo até parecer', (x) => A.duracao(x.dias_ate_parecer), null, null, 1],
     ['Devoluções', (x) => String(x.n_devolucoes), null, null, 1], ['Diagnóstico → solicitação', (x) => (x.dias_diag === null ? '—' : x.dias_diag + ' d'), null, null, 1], ['Motivo', (x) => x.motivo_indeferimento || x.motivo_devolucao || '—']
   ];
   const LIM = 300;
@@ -53,7 +62,7 @@
       const foot = document.createElement('div'); foot.className = 'ao-note';
       modal.append(head, meta, scroll, foot); el.append(modal);
       const m = { el, sec, st, h, nn, q, tbody, thead, foot, csv, close, modal };
-      m.cols = () => COLS.filter((c) => c[2] !== 'local' || A.P().perfil === 'local');
+      m.cols = () => COLS.filter((c) => (c[2] !== 'local' || A.P().perfil === 'local') && (!c[5] || c[5].includes(st.key)));
       m.all = () => { if (st.rows) return st.rows; const r = A.rows(); return r && st.key && A.KPI[st.key] ? A.KPI[st.key](r) : []; };
       m.filtered = () => { const cols = m.cols(); const t = A.norm(st.q); const rows = m.all(); return t ? rows.filter((x) => cols.some((c) => A.norm(c[1](x)).includes(t))) : rows; };
       m.body = () => {

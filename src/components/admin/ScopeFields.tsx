@@ -79,7 +79,11 @@ export function ScopeFields({
         const keys = KEYS[level];
         const fixed = fixedScope?.[level] ?? null;
         const required = level === target;
-        const options = territorio?.[keys.optionsKey] ?? [];
+        // As opções dos níveis abaixo da UF vêm com a UF em `pai`: mostra só as da UF escolhida.
+        const ufEscolhida = fixedScope?.uf?.codigo ?? (value.ufCodigo as string | undefined)?.trim().toUpperCase();
+        const options = (territorio?.[keys.optionsKey] ?? []).filter(
+          (o) => level === "uf" || !ufEscolhida || !o.pai || o.pai === ufEscolhida,
+        );
         const listId = `opts-${level}`;
         return (
           <div key={level} className="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-2">
