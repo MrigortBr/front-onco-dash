@@ -208,15 +208,31 @@ export function UpdatesConsole() {
     const add = (text: string) => {
       if (text) setLines((prev) => [...prev, { time: new Date().toLocaleTimeString("pt-BR"), text }]);
     };
+    let terminou = false;
     try {
       await streamSync((e) => {
         add(e.msg);
-        if (e.done) setResult(e.success ? "success" : "error");
+        if (e.done) {
+          terminou = true;
+          setResult(e.success ? "success" : "error");
+        }
       }, controller.signal);
+      if (!terminou) throw new Error("conexão encerrada antes do fim");
     } catch (e) {
       if ((e as Error).name !== "AbortError") {
-        add(`[ERRO] ${(e as Error).message}`);
-        setResult("error");
+        // 2026-11-24: a conexão do andamento pode cair (VPN/proxy) com a
+        // atualização ainda rodando no servidor — não é erro da atualização.
+        // Segue pela situação (/sync/status) até terminar e mostra o resultado
+        // gravado no histórico.
+        add(`[AVISO] O andamento ao vivo foi interrompido (${(e as Error).message}). A atualização continua no servidor — acompanhando...`);
+        const final = await acompanharAteTerminar(controller.signal);
+        if (final) {
+          add(final.success ? "Atualização concluída." : `[ERRO] ${final.error ?? "A atualização terminou com erro."}`);
+          setResult(final.success ? "success" : "error");
+        } else {
+          add("[ERRO] Não foi possível confirmar o resultado — veja o histórico abaixo.");
+          setResult("error");
+        }
       }
     } finally {
       setRunning(false);
@@ -228,6 +244,23 @@ export function UpdatesConsole() {
   };
 
   const busy = running || !!status?.running;
+
+  /** Consulta /sync/status a cada 5 s até a atualização parar; devolve a última execução do histórico. */
+  async function acompanharAteTerminar(signal: AbortSignal): Promise<SyncRunHistoryItem | null> {
+    for (let i = 0; i < 360 && !signal.aborted; i++) {
+      await new Promise((r) => setTimeout(r, 5000));
+      try {
+        const s = await api<SyncStatus>("/sync/status");
+        if (!s.running) {
+          const h = await api<Page<SyncRunHistoryItem>>("/sync/history?limit=1&offset=0");
+          return h.items[0] ?? null;
+        }
+      } catch {
+        // falha pontual de rede: tenta de novo no próximo ciclo
+      }
+    }
+    return null;
+  }
 
   return (
     <div>

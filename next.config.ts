@@ -20,6 +20,12 @@ const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
   poweredByHeader: false,
+  experimental: {
+    // O repasse de /api para a API corta, por padrão, a conexão parada há 30 s —
+    // derrubava o andamento ao vivo da atualização de dados (SSE) enquanto uma
+    // tabela grande era gravada. A API também manda um sinal de vida a cada 10 s.
+    proxyTimeout: 10 * 60 * 1000,
+  },
   turbopack: {
     rules: {
       "*.css": {
